@@ -1,0 +1,146 @@
+load(
+    "@gz//bazel/skylark:build_defs.bzl",
+    "GZ_FEATURES",
+    "GZ_ROOT",
+    "GZ_VISIBILITY",
+    "gz_configure_header",
+    "gz_export_header",
+    "gz_include_header",
+)
+load(
+    "@gz//bazel/lint:lint.bzl",
+    "add_lint_tests",
+)
+
+package(
+    default_visibility = GZ_VISIBILITY,
+    features = GZ_FEATURES,
+)
+
+cc_library(
+    name = "LinearMath",
+    srcs = glob([
+        "src/LinearMath/*.c",
+        "src/LinearMath/*.cpp",
+        "src/LinearMath/**/*.cpp",
+    ]),
+    hdrs = glob([
+        "src/LinearMath/*.h",
+        "src/LinearMath/**/*.h",
+        "src/LinearMath/*.hpp",
+    ]),
+    includes = ["src"],
+)
+
+cc_library(
+    name = "Bullet3Common",
+    srcs = glob([
+        "src/Bullet3Common/*.c",
+        "src/Bullet3Common/*.cpp",
+    ]),
+    hdrs = glob([
+        "src/Bullet3Common/*.h",
+        "src/Bullet3Common/shared/*.h",
+        "src/Bullet3Common/*.hpp",
+    ]),
+    includes = ["src"],
+)
+
+cc_library(
+    name = "BulletCollision",
+    srcs = glob([
+        "src/BulletCollision/**/*.cpp",
+    ]),
+    hdrs = glob([
+        "src/BulletCollision/**/*.h",
+        "src/btBulletCollisionCommon.h",
+    ]),
+    includes = ["src"],
+    deps = [
+        ":LinearMath",
+    ],
+)
+
+cc_library(
+    name = "BulletDynamics",
+    srcs = glob([
+        "src/BulletDynamics/**/*.cpp",
+    ]),
+    hdrs = glob([
+        "src/BulletDynamics/**/*.h",
+        "src/btBulletDynamicsCommon.h",
+    ]),
+    includes = ["src"],
+    deps = [
+        ":BulletCollision",
+        ":LinearMath",
+    ],
+)
+
+cc_library(
+    name = "BulletInverseDynamics",
+    srcs = glob([
+        "src/BulletInverseDynamics/**/*.cpp",
+    ]),
+    hdrs = glob([
+        "src/BulletInverseDynamics/**/*.h",
+        "src/BulletInverseDynamics/**/*.hpp",
+        "src/btBulletDynamicsCommon.h",
+    ]),
+    includes = ["src"],
+    deps = [
+        ":Bullet3Common",
+        ":BulletCollision",
+        ":LinearMath",
+    ],
+)
+
+cc_library(
+    name = "Bullet3Geometry",
+    srcs = glob([
+        "src/Bullet3Geometry/**/*.cpp",
+    ]),
+    hdrs = glob([
+        "src/Bullet3Geometry/**/*.h",
+    ]),
+    includes = ["src"],
+    deps = [
+        ":Bullet3Common",
+        ":LinearMath",
+    ],
+)
+
+cc_library(
+    name = "Bullet3Collision",
+    srcs = glob([
+        "src/Bullet3Collision/**/*.cpp",
+    ]),
+    hdrs = glob([
+        "src/Bullet3Collision/**/*.h",
+    ]),
+    includes = ["src"],
+    deps = [
+        ":Bullet3Common",
+        ":Bullet3Geometry",
+        ":LinearMath",
+    ],
+)
+
+cc_library(
+    name = "Bullet3Dynamics",
+    srcs = glob([
+        "src/Bullet3Dynamics/**/*.cpp",
+    ]),
+    hdrs = glob([
+        "src/Bullet3Dynamics/**/*.h",
+    ]),
+    includes = ["src"],
+    deps = [
+        ":Bullet3Collision",
+        ":Bullet3Common",
+        ":Bullet3Geometry",
+        ":LinearMath",
+    ],
+)
+
+add_lint_tests()
