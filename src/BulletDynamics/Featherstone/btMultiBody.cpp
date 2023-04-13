@@ -916,7 +916,7 @@ void btMultiBody::computeAccelerationsArticulatedBodyAlgorithmMultiDof(btScalar 
     // fix the problem.
     if (parent+1 == 1 && i+1 == 2)
     {
-      fromParent.m_trnVec[2] = -0.249495;
+      // fromParent.m_trnVec[2] = -0.249495;
     }
 
     std::cout << "    b. FromParent.m_trnVec = "
