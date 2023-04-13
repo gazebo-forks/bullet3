@@ -21,6 +21,7 @@
  
  */
 
+#include <iostream>
 #include "btMultiBody.h"
 #include "btMultiBodyLink.h"
 #include "btMultiBodyLinkCollider.h"
@@ -30,6 +31,32 @@
 //#include "Bullet3Common/b3Logging.h"
 // #define INCLUDE_GYRO_TERM
 
+void printSpatForceVec(const btSpatialForceVector &v, int spaces)
+{
+  std::cout << std::string(spaces, ' ')
+    << v.m_topVec[0] << " " << v.m_topVec[1] << " " << v.m_topVec[2]
+    << std::endl
+    << std::string(spaces, ' ')
+    << v.m_bottomVec[0] << " " << v.m_bottomVec[1] << " " << v.m_bottomVec[2]
+    << std::endl;
+}
+
+void printSpatMotionVec(const btSpatialMotionVector &v, int spaces)
+{
+  std::cout  << std::string(spaces, ' ')
+    << "Angular= "
+    << v.getAngular()[0] << " "
+    << v.getAngular()[1] << " "
+    << v.getAngular()[2]
+    << std::endl;
+
+  std::cout  << std::string(spaces, ' ')
+    << "Linear= "
+    << v.getLinear()[0] << " "
+    << v.getLinear()[1] << " "
+    << v.getLinear()[2]
+    << std::endl;
+}
 
 namespace
 {
@@ -733,6 +760,8 @@ void btMultiBody::computeAccelerationsArticulatedBodyAlgorithmMultiDof(btScalar 
 	bool jointFeedbackInWorldSpace,
 	bool jointFeedbackInJointFrame)
 {
+  std::cout << "********************************************************\n";
+  std::cout << "  Is Constraint Pass[" << isConstraintPass << "]\n\n";
 	// Implement Featherstone's algorithm to calculate joint accelerations (q_double_dot)
 	// and the base linear & angular accelerations.
 
@@ -864,8 +893,11 @@ void btMultiBody::computeAccelerationsArticulatedBodyAlgorithmMultiDof(btScalar 
 	rot_from_world[0] = rot_from_parent[0];
 
 	//
+  std::cout << "1. Processing links\n";
 	for (int i = 0; i < num_links; ++i)
 	{
+    std::cout << "  Link[" << i << "] Mass=" << m_links[i].m_mass << "\n";
+
 		const int parent = m_links[i].m_parent;
 		rot_from_parent[i + 1] = btMatrix3x3(m_links[i].m_cachedRotParentToThis);
 		rot_from_world[i + 1] = rot_from_parent[i + 1] * rot_from_world[parent + 1];
@@ -873,7 +905,29 @@ void btMultiBody::computeAccelerationsArticulatedBodyAlgorithmMultiDof(btScalar 
 		fromParent.m_rotMat = rot_from_parent[i + 1];
 		fromParent.m_trnVec = m_links[i].m_cachedRVector;
 		fromWorld.m_rotMat = rot_from_world[i + 1];
+
+    std::cout << "    a. SpatVel[parent=" << parent+1 << "] =\n";
+    printSpatMotionVec(spatVel[parent+1], 6);
+
+    // A bad solution, that might point toward a cause??
+    // I think `trnVec` is a tranlation vector from the parent link to the
+    // child link. 
+    // Reducing the translation from 0.5 to roughly half that value seems to
+    // fix the problem.
+    if (parent+1 == 1 && i+1 == 2)
+    {
+      fromParent.m_trnVec[2] = -0.249495;
+    }
+
+    std::cout << "    b. FromParent.m_trnVec = "
+      << fromParent.m_trnVec[0] << " "
+      << fromParent.m_trnVec[1] << " "
+      << fromParent.m_trnVec[2] <<  std::endl;
+
 		fromParent.transform(spatVel[parent + 1], spatVel[i + 1]);
+
+    std::cout << "    c. SpatVel[" << i+1 << "] =\n";
+    printSpatMotionVec(spatVel[i+1], 6);
 
 		// now set vhat_i to its true value by doing
 		// vhat_i += qidot * shat_i
@@ -899,6 +953,8 @@ void btMultiBody::computeAccelerationsArticulatedBodyAlgorithmMultiDof(btScalar 
 
 		// we can now calculate chat_i
 		spatVel[i + 1].cross(spatJointVel, spatCoriolisAcc[i]);
+    std::cout << "    d. SpatVel[" << i+1 << "] =\n";
+    printSpatMotionVec(spatVel[i+1], 6);
 
 		// calculate zhat_i^A
 		//
@@ -930,14 +986,22 @@ void btMultiBody::computeAccelerationsArticulatedBodyAlgorithmMultiDof(btScalar 
 			//
 			//adding damping terms (only)
 			btScalar linDampMult = 1., angDampMult = 1.;
+
 			zeroAccSpatFrc[i + 1].addVector(angDampMult * m_links[i].m_inertiaLocal * spatVel[i + 1].getAngular() * (DAMPING_K1_ANGULAR + DAMPING_K2_ANGULAR * spatVel[i + 1].getAngular().safeNorm()),
 											linDampMult * m_links[i].m_mass * spatVel[i + 1].getLinear() * (DAMPING_K1_LINEAR + DAMPING_K2_LINEAR * spatVel[i + 1].getLinear().safeNorm()));
 			//p += vhat x Ihat vhat - done in a simpler way
 			if (m_useGyroTerm)
 				zeroAccSpatFrc[i + 1].addAngular(spatVel[i + 1].getAngular().cross(m_links[i].m_inertiaLocal * spatVel[i + 1].getAngular()));
 			//
-                        if (!isConstraintPass)
+     
+    // Solution(?): Ignore zero acceleration spatial force on constraint
+    // pass. This seems incorrect. 
+    // if (!isConstraintPass)
       				zeroAccSpatFrc[i + 1].addLinear(m_links[i].m_mass * spatVel[i + 1].getAngular().cross(spatVel[i + 1].getLinear()));
+
+    std::cout << "    e. After Linear add zeroAccSpatFrc[" << i+1 << "]=\n";
+    printSpatForceVec(zeroAccSpatFrc[i + 1], 6);
+
 			//
 			//btVector3 temp = m_links[i].m_mass * spatVel[i+1].getAngular().cross(spatVel[i+1].getLinear());
 			////clamp parent's omega
@@ -968,10 +1032,12 @@ void btMultiBody::computeAccelerationsArticulatedBodyAlgorithmMultiDof(btScalar 
 		//printf("c[%d] = [%.4f %.4f %.4f]\n", i, coriolis_bottom_linear[i].x(), coriolis_bottom_linear[i].y(), coriolis_bottom_linear[i].z());
 	}
 
+  std::cout << "2. Download loop\n";
 	// 'Downward' loop.
 	// (part of TreeForwardDynamics in Mirtich.)
 	for (int i = num_links - 1; i >= 0; --i)
 	{
+    std::cout << "  link i = " << i << std::endl;
 		if(isLinkAndAllAncestorsKinematic(i))
 			continue;
 		const int parent = m_links[i].m_parent;
@@ -1168,16 +1234,23 @@ void btMultiBody::computeAccelerationsArticulatedBodyAlgorithmMultiDof(btScalar 
 			}
 			else
 			{
+        if (i==0) {
+        std::cout << "    a. Reaction force before update: " << m_links[i].m_jointFeedback->m_reactionForces.m_topVec[0] << "\n";
+        }
+
 				if (isConstraintPass)
 				{
+          if (i==0) std::cout << "    b. Adding reaction force: " << linearTopVec[0] << "\n";
 					m_links[i].m_jointFeedback->m_reactionForces.m_bottomVec += angularBotVec;
 					m_links[i].m_jointFeedback->m_reactionForces.m_topVec += linearTopVec;
 				}
 				else
 				{
+          if (i==0) std::cout << "    c. Setting reaction force: "  << linearTopVec[0] << "\n";
 					m_links[i].m_jointFeedback->m_reactionForces.m_bottomVec = angularBotVec;
 					m_links[i].m_jointFeedback->m_reactionForces.m_topVec = linearTopVec;
 				}
+        if (i==0) std::cout << "    d. Final reaction force: " << m_links[i].m_jointFeedback->m_reactionForces.m_topVec[0] << std::endl;
 			}
 		}
 	}
