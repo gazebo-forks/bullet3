@@ -29,6 +29,10 @@ cc_library(
         "src/LinearMath/**/*.h",
         "src/LinearMath/*.hpp",
     ]),
+    copts = [
+        "-Wno-stringop-overflow",
+        "-Wno-reorder",
+    ],
     includes = ["src"],
 )
 
@@ -55,6 +59,14 @@ cc_library(
         "src/BulletCollision/**/*.h",
         "src/btBulletCollisionCommon.h",
     ]),
+    copts = [
+        "-Wno-maybe-uninitialized",
+        "-Wno-sign-compare",
+        "-Wno-strict-aliasing",
+        "-Wno-stringop-overflow",
+        "-Wno-unused-but-set-variable",
+        "-Wno-unused-variable",
+    ],
     includes = ["src"],
     deps = [
         ":LinearMath",
@@ -70,6 +82,18 @@ cc_library(
         "src/BulletDynamics/**/*.h",
         "src/btBulletDynamicsCommon.h",
     ]),
+    copts = [
+        "-Wno-class-memaccess",
+        "-Wno-maybe-uninitialized",
+        "-Wno-reorder",
+        "-Wno-sign-compare",
+        "-Wno-strict-aliasing",
+        "-Wno-stringop-overflow",
+        "-Wno-unused-but-set-variable",
+        "-Wno-unused-function",
+        "-Wno-unused-variable",
+        "-Wno-uninitialized",
+    ],
     includes = ["src"],
     deps = [
         ":BulletCollision",
@@ -134,6 +158,17 @@ cc_library(
     hdrs = glob([
         "src/Bullet3Dynamics/**/*.h",
     ]),
+    copts = [
+        "-Wno-class-memaccess",
+        "-Wno-maybe-uninitialized",
+        "-Wno-reorder",
+        "-Wno-sign-compare",
+        "-Wno-strict-aliasing",
+        "-Wno-stringop-overflow",
+        "-Wno-unused-but-set-variable",
+        "-Wno-unused-function",
+        "-Wno-unused-variable",
+    ],
     includes = ["src"],
     deps = [
         ":Bullet3Collision",
